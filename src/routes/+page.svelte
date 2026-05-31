@@ -22,10 +22,23 @@
 	let letterCardEl: HTMLElement | null = null;
 	let dropBoxEl: HTMLElement | null = null;
 
-	const LETTER_BOX = 7;   // 1행 7열 = 오른쪽 상단 (편지 출처)
-	const DROP_BOX   = 10;  // 2행 3열
+	const LETTER_BOX  = 7;
+	const DROP_BOX    = 10;
 	const DISPLAY_POS = 9;
-	const SKIP_POS = 16;
+	const SKIP_POS    = 16;
+	const STACK_BOX   = 3;  // 1행 3열 — 지난 질문 묶음
+
+	type Letter = { tag: string; date: string; question: string; preview: string };
+	const letters: Letter[] = [
+		{ tag: "백엔드",    date: "2026년 5월 30일", question: "인덱스(Index)란 무엇이고, 언제 사용하면 좋을까요?",  preview: "DB 인덱스는 데이터 검색 속도를 높이기 위해 별도로 관리하는 자료구조입니다. B-Tree 구조로 O(log n) 탐색을 지원합니다." },
+		{ tag: "프론트엔드", date: "2026년 5월 29일", question: "브라우저의 렌더링 과정을 설명해주세요.",             preview: "HTML을 파싱해 DOM을, CSS를 파싱해 CSSOM을 생성하고, 렌더 트리를 만든 후 레이아웃과 페인팅을 수행합니다." },
+		{ tag: "공통",      date: "2026년 5월 28일", question: "RESTful API 설계 원칙에 대해 설명해주세요.",          preview: "REST는 자원(Resource), 행위(HTTP Method), 표현(Representation)으로 구성됩니다. 무상태성과 일관된 인터페이스가 핵심입니다." },
+		{ tag: "백엔드",    date: "2026년 5월 27일", question: "트랜잭션의 ACID 속성에 대해 설명해주세요.",           preview: "원자성(Atomicity), 일관성(Consistency), 격리성(Isolation), 지속성(Durability)으로 데이터베이스 안정성을 보장합니다." },
+	];
+
+	let stackOpen = $state(false);
+	let stackIdx  = $state(0);
+	const stackLetter = $derived(letters[stackIdx]);
 
 	type Item = number | "display" | "letter" | "drop";
 	const items: Item[] = [];
@@ -201,6 +214,26 @@
 					<div class="lock"></div>
 				</div>
 
+			{:else if item === STACK_BOX}
+				<!-- 지난 질문 묶음 -->
+				<div class="box stack-box" onclick={() => { stackOpen = true; stackIdx = 0; }}>
+					<!-- 겹친 편지들 -->
+					<div class="stack-env se-back">
+						<div class="envelope-flap"></div>
+						<div class="envelope-body"><span class="envelope-label"></span></div>
+					</div>
+					<div class="stack-env se-mid">
+						<div class="envelope-flap"></div>
+						<div class="envelope-body"><span class="envelope-label"></span></div>
+					</div>
+					<div class="stack-env se-front">
+						<div class="envelope-flap"></div>
+						<div class="envelope-body"><span class="envelope-label">지난 질문</span></div>
+					</div>
+					<div class="slot"></div>
+					<div class="lock"></div>
+				</div>
+
 			{:else}
 				<div class="box">
 					<div class="slot"></div>
@@ -214,7 +247,46 @@
 	{#if phase === "sent"}
 		<p class="sent-notice">✉ 확인 메일을 보냈습니다 — 메일함을 확인해주세요</p>
 	{/if}
+
+	<!-- 서비스 설명 -->
+	<div class="service-desc">
+		<p class="service-main">매일 아침, 개발 면접 질문 1통</p>
+		<p class="service-sub">GitHub Discussion에서 함께 답을 만들어가는 개발자 학습 커뮤니티</p>
+	</div>
 </div>
+
+<!-- 지난 질문 모달 -->
+{#if stackOpen}
+<div class="dim" onclick={() => stackOpen = false}></div>
+<div class="sample-modal">
+	<button class="sm-close" onclick={() => stackOpen = false}>✕</button>
+
+	<div class="sm-header">
+		<span class="sm-from">From. 매일함</span>
+		<span class="sm-date">{stackLetter.date}</span>
+	</div>
+	<span class="sm-tag">{stackLetter.tag}</span>
+	<h2 class="sm-question">{stackLetter.question}</h2>
+	<hr class="sm-rule" />
+	<p class="sm-preview">{stackLetter.preview}</p>
+	<p class="sm-note">* 매일함은 정답을 제공하지 않습니다. GitHub Discussion에서 함께 모범답안을 만들어가세요.</p>
+
+	<!-- 네비게이션 -->
+	<div class="sm-nav">
+		<button class="sm-nav-btn" disabled={stackIdx === 0} onclick={() => stackIdx--}>← 이전</button>
+		<span class="sm-dots">
+			{#each letters as _, i}
+				<span class="sm-dot" class:active={i === stackIdx}></span>
+			{/each}
+		</span>
+		<button class="sm-nav-btn" disabled={stackIdx === letters.length - 1} onclick={() => stackIdx++}>다음 →</button>
+	</div>
+
+	<button class="sm-cta" onclick={() => { stackOpen = false; openCard(); }}>
+		구독하면 매일 이런 질문이 도착해요 →
+	</button>
+</div>
+{/if}
 
 <!-- 드래그 가능한 편지 카드 -->
 {#if phase !== "idle" && phase !== "sent"}
@@ -355,7 +427,7 @@
 		align-items: center;
 		justify-content: center;
 		gap: 6px;
-		padding: 12px;
+		/* padding: 12px; */
 		background: linear-gradient(135deg, #1e2a1e, #111a11);
 		box-shadow: inset 0 0 16px rgba(0,0,0,0.9), 0 0 0 1px #333;
 	}
@@ -534,6 +606,203 @@
 		color: #888;
 		letter-spacing: 0.1em;
 		font-family: 'DM Sans', sans-serif;
+	}
+
+	.service-desc {
+		width: 100%;
+		max-width: 800px;
+		padding: 20px 16px 0;
+		display: flex;
+		align-items: baseline;
+		gap: 16px;
+	}
+
+	.service-main {
+		font-family: 'DM Serif Display', serif;
+		font-size: 0.95rem;
+		color: #444;
+		white-space: nowrap;
+	}
+
+	.service-sub {
+		font-size: 0.7rem;
+		color: #888;
+		font-family: 'DM Sans', sans-serif;
+		border-left: 1px solid #bbb;
+		padding-left: 16px;
+		line-height: 1.6;
+	}
+
+	/* ── 스택 박스 ── */
+	.stack-box {
+		cursor: pointer;
+		transition: filter 0.2s;
+	}
+	.stack-box:hover { filter: brightness(1.03); }
+
+	.stack-env {
+		position: absolute;
+		bottom: calc(50% + 4px);
+		left: 50%;
+		width: 56%;
+		height: 52px;
+		transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1), bottom 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+		filter: drop-shadow(0 -1px 3px rgba(0,0,0,0.18));
+	}
+
+	.se-back  { transform: translateX(-44%) rotate(6deg);  z-index: 1; }
+	.se-mid   { transform: translateX(-50%) rotate(-2deg); z-index: 2; }
+	.se-front { transform: translateX(-54%) rotate(-6deg); z-index: 3; }
+
+	.stack-box:hover .se-back  { transform: translateX(-38%) rotate(10deg);  bottom: calc(50% + 8px); }
+	.stack-box:hover .se-mid   { transform: translateX(-50%) rotate(-2deg);  bottom: calc(50% + 13px); }
+	.stack-box:hover .se-front { transform: translateX(-62%) rotate(-10deg); bottom: calc(50% + 8px); }
+
+	/* ── 딤 ── */
+	.dim {
+		position: fixed;
+		inset: 0;
+		background: rgba(0,0,0,0.45);
+		z-index: 40;
+		animation: fadeIn 0.2s ease-out;
+	}
+
+	/* ── 샘플 모달 ── */
+	.sample-modal {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: min(460px, calc(100vw - 40px));
+		background: #F5EFDF;
+		border: 1px solid #c8bfb0;
+		padding: 32px;
+		z-index: 50;
+		animation: popIn 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
+		max-height: 90vh;
+		overflow-y: auto;
+	}
+
+	.sm-close {
+		position: absolute;
+		top: 12px; right: 14px;
+		font-size: 0.85rem;
+		color: #bbb;
+		background: none;
+		border: none;
+		cursor: pointer;
+	}
+	.sm-close:hover { color: #555; }
+
+	.sm-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		margin-bottom: 14px;
+	}
+	.sm-from { font-size: 0.68rem; color: #aaa; font-family: 'DM Sans', sans-serif; }
+	.sm-date { font-size: 0.68rem; color: #aaa; font-family: 'DM Sans', sans-serif; }
+
+	.sm-tag {
+		display: inline-block;
+		font-size: 0.65rem;
+		font-family: 'DM Sans', sans-serif;
+		border: 1px solid #c8bfb0;
+		padding: 2px 8px;
+		color: #777;
+		margin-bottom: 12px;
+	}
+
+	.sm-question {
+		font-family: 'DM Serif Display', serif;
+		font-size: 1.3rem;
+		font-weight: 400;
+		line-height: 1.4;
+		color: #1a1108;
+		margin-bottom: 16px;
+		word-break: keep-all;
+		min-height: 4rem;
+	}
+
+	.sm-rule {
+		border: none;
+		border-top: 1px solid #d0c5b0;
+		margin-bottom: 14px;
+	}
+
+	.sm-preview {
+		font-size: 0.85rem;
+		line-height: 1.9;
+		color: #3d2b1f;
+		font-family: 'DM Sans', sans-serif;
+		margin-bottom: 16px;
+		min-height: 5.5rem;
+	}
+
+	.sm-note {
+		font-size: 0.68rem;
+		color: #aaa;
+		font-family: 'DM Sans', sans-serif;
+		font-style: italic;
+		line-height: 1.6;
+		margin-bottom: 24px;
+	}
+
+	.sm-cta {
+		width: 100%;
+		padding: 12px;
+		background: #1a1108;
+		color: #F5EFDF;
+		font-size: 0.85rem;
+		font-family: 'DM Sans', sans-serif;
+		border: none;
+		cursor: pointer;
+		letter-spacing: 0.04em;
+		transition: opacity 0.2s;
+	}
+	.sm-cta:hover { opacity: 0.8; }
+
+	.sm-nav {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 16px;
+	}
+
+	.sm-nav-btn {
+		font-size: 0.72rem;
+		font-family: 'DM Sans', sans-serif;
+		color: #aaa;
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 4px 0;
+		transition: color 0.15s;
+	}
+	.sm-nav-btn:hover:not(:disabled) { color: #333; }
+	.sm-nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+	.sm-dots {
+		display: flex;
+		gap: 6px;
+		align-items: center;
+	}
+
+	.sm-dot {
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: #d0c5b0;
+		transition: background 0.2s, transform 0.2s;
+	}
+	.sm-dot.active {
+		background: #1a1108;
+		transform: scale(1.3);
+	}
+
+	@keyframes popIn {
+		from { transform: translate(-50%, -46%) scale(0.92); opacity: 0; }
+		to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 	}
 
 	.sent-notice {
