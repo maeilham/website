@@ -1,5 +1,55 @@
 <script lang="ts">
+	import { page } from "$app/stores";
+
 	const API = import.meta.env.VITE_API_URL ?? "";
+
+	const today = new Date().toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit" }).replace(". ", "/").replace(".", "");
+	let nowTime = $state(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }));
+	setInterval(() => {
+		nowTime = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+	}, 1000);
+
+	const urlStatus = $derived($page.url.searchParams.get("status"));
+
+	type TickerItem = { text: string; sep?: boolean };
+	const defaultTicker: TickerItem[] = [
+		{ text: "매일 아침, 질문 하나가 도착합니다" },
+		{ text: "——", sep: true },
+		{ text: "아는 것 같았는데 막히는 것들, 함께 생각해봐요" },
+		{ text: "——", sep: true },
+		{ text: "DAILY QUESTIONS · GITHUB DISCUSSION · MAEILHAM" },
+		{ text: "——", sep: true },
+		{ text: "백엔드 · 프론트엔드 · CS 기초" },
+		{ text: "——", sep: true },
+	];
+	const statusTicker: Record<string, TickerItem[]> = {
+		confirmed: [
+			{ text: "구독이 완료됐습니다" },
+			{ text: "——", sep: true },
+			{ text: "내일부터 매일 아침 질문이 도착합니다" },
+			{ text: "——", sep: true },
+			{ text: "GitHub Discussion에서 함께 답을 만들어가요" },
+			{ text: "——", sep: true },
+		],
+		unsubscribed: [
+			{ text: "구독이 해지됐습니다" },
+			{ text: "——", sep: true },
+			{ text: "그동안 함께해주셔서 감사합니다" },
+			{ text: "——", sep: true },
+			{ text: "언제든 다시 구독할 수 있습니다" },
+			{ text: "——", sep: true },
+		],
+		invalid: [
+			{ text: "링크가 유효하지 않습니다" },
+			{ text: "——", sep: true },
+			{ text: "만료됐거나 이미 사용된 링크입니다" },
+			{ text: "——", sep: true },
+			{ text: "다시 구독을 시도해주세요" },
+			{ text: "——", sep: true },
+		],
+	};
+	const tickerItems = $derived(urlStatus && statusTicker[urlStatus] ? statusTicker[urlStatus] : defaultTicker);
+	const tickerHighlight = $derived(urlStatus === "confirmed");
 
 	type Phase = "idle" | "writing" | "dragging" | "inserting" | "sent" | "error";
 	let phase = $state<Phase>("idle");
@@ -133,16 +183,12 @@
 		phase = "inserting";
 		overSlot = false;
 
-		// TODO: remove mock before launch
-		const MOCK = true;
 		const [res] = await Promise.all([
-			MOCK
-				? Promise.resolve(new Response(null, { status: 200 }))
-				: fetch(`${API}/api/subscribe`, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ email }),
-				  }).catch(() => null),
+			fetch(`${API}/api/subscribe`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email }),
+			}).catch(() => null),
 			new Promise(r => setTimeout(r, 750)),
 		]);
 
@@ -191,14 +237,36 @@
 		<span class="title-text">SMART POST BOX</span>
 	</div>
 
+	<!-- 전광판 -->
+	<div class="ticker-wrap" class:ticker-highlight={tickerHighlight}>
+		<div class="ticker-track">
+			{#each Array(2) as _}
+				{#each tickerItems as item}
+					{#if item.sep}
+						<span class="ticker-sep">{item.text}</span>
+					{:else}
+						<span class="ticker-item">{item.text}</span>
+					{/if}
+				{/each}
+			{/each}
+		</div>
+	</div>
+
 	<!-- 데스크톱 그리드 (CSS로 모바일에서 숨김) -->
 	<div class="locker-grid desktop-grid">
 		{#each desktopItems as item}
 			{#if item === "display"}
 				<div class="box display-box"><div class="display-screen" class:display-sent={phase === "sent"}>
-					<p class="display-label" class:display-label-sent={phase === "sent"}>{phase === "sent" ? "구독 완료" : "매일함"}</p>
-					<p class="display-sub">매일함으로, 매일 함.</p>
-					<div class="display-dot" class:display-dot-sent={phase === "sent"}></div>
+					<div class="kiosk-card">
+						{#if phase === "sent"}
+							<p class="kiosk-title">구독완료</p>
+							<p class="kiosk-sub ok">CONFIRMED</p>
+						{:else}
+							<p class="kiosk-title">매일함</p>
+							<p class="kiosk-sub">DAILY POST</p>
+						{/if}
+					</div>
+					<span class="kiosk-live">● LIVE</span>
 				</div></div>
 			{:else if item === "letter"}
 				<div class="box letter-box">
@@ -234,9 +302,16 @@
 		{#each mobileItems as item}
 			{#if item === "display"}
 				<div class="box display-box"><div class="display-screen" class:display-sent={phase === "sent"}>
-					<p class="display-label" class:display-label-sent={phase === "sent"}>{phase === "sent" ? "구독 완료" : "매일함"}</p>
-					<p class="display-sub">매일함으로, 매일 함.</p>
-					<div class="display-dot" class:display-dot-sent={phase === "sent"}></div>
+					<div class="kiosk-card">
+						{#if phase === "sent"}
+							<p class="kiosk-title">구독완료</p>
+							<p class="kiosk-sub ok">CONFIRMED</p>
+						{:else}
+							<p class="kiosk-title">매일함</p>
+							<p class="kiosk-sub">DAILY POST</p>
+						{/if}
+					</div>
+					<span class="kiosk-live">● LIVE</span>
 				</div></div>
 			{:else if item === "letter"}
 				<div class="box letter-box">
@@ -382,6 +457,55 @@
 		padding: 32px 16px;
 	}
 
+	/* ── 전광판 ── */
+	.ticker-wrap {
+		width: 100%;
+		max-width: 800px;
+		overflow: hidden;
+		background: linear-gradient(135deg, #1e2a1e, #111a11);
+		border: 1px solid #2a3a2a;
+		border-top: none;
+		border-bottom: none;
+		padding: 7px 0;
+		box-shadow: inset 0 0 12px rgba(0,0,0,0.6);
+	}
+
+	.ticker-track {
+		display: flex;
+		width: max-content;
+		animation: ticker 28s linear infinite;
+		gap: 0;
+	}
+	.ticker-track:hover { animation-play-state: paused; }
+
+	.ticker-item {
+		font-size: 0.6rem;
+		font-family: 'DM Sans', sans-serif;
+		font-weight: 500;
+		letter-spacing: 0.14em;
+		color: #90ee90;
+		text-shadow: 0 0 8px rgba(144,238,144,0.55);
+		white-space: nowrap;
+		padding: 0 24px;
+	}
+
+	.ticker-sep {
+		font-size: 0.6rem;
+		color: #3a6a3a;
+		white-space: nowrap;
+		align-self: center;
+	}
+
+	.ticker-highlight .ticker-item {
+		color: #b8f0b8;
+		text-shadow: 0 0 10px rgba(144,238,144,0.8);
+	}
+
+	@keyframes ticker {
+		from { transform: translateX(0); }
+		to   { transform: translateX(-50%); }
+	}
+
 	.title-bar {
 		display: flex;
 		align-items: center;
@@ -450,15 +574,24 @@
 	.display-box {
 		grid-row: span 2;
 		height: auto;
-		background: linear-gradient(160deg, #c8c8c8 0%, #b0b0b0 50%, #a8a8a8 100%);
-		border: 2px solid #888;
+		background:
+			linear-gradient(135deg,
+				rgba(255,255,255,0.13) 0%,
+				rgba(255,255,255,0.04) 25%,
+				transparent 50%
+			),
+			linear-gradient(180deg, #2a2a35 0%, #0d0d12 100%);
+		border: 1px solid rgba(255,255,255,0.18);
+		border-bottom-color: rgba(0,0,0,0.6);
+		border-right-color: rgba(0,0,0,0.4);
 		box-shadow:
-			inset 0 2px 0 rgba(255,255,255,0.5),
-			inset 0 -2px 0 rgba(0,0,0,0.15),
-			0 0 0 1px #aaa;
+			inset 0 1px 0 rgba(255,255,255,0.2),
+			inset 0 -1px 0 rgba(0,0,0,0.6),
+			0 0 0 1px #000,
+			0 4px 12px rgba(0,0,0,0.5);
 		overflow: hidden;
 		cursor: default;
-		padding: 8px;
+		padding: 4px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -471,51 +604,46 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 6px;
-		/* padding: 12px; */
-		background: linear-gradient(135deg, #1e2a1e, #111a11);
-		box-shadow: inset 0 0 16px rgba(0,0,0,0.9), 0 0 0 1px #333;
+		gap: 4px;
+		background: #fff;
+		font-family: 'DM Sans', sans-serif;
+		position: relative;
 	}
 
-	.display-label {
-		font-family: 'Noto Sans KR', sans-serif;
+	.kiosk-card {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2px;
+	}
+
+	.kiosk-title {
+		font-size: 1.05rem;
 		font-weight: 700;
-		font-size: 1rem;
-		color: #90ee90;
+		color: #111;
+		letter-spacing: -0.02em;
+		line-height: 1;
+	}
+
+	.kiosk-sub {
+		font-size: 0.44rem;
+		font-weight: 500;
+		letter-spacing: 0.18em;
+		color: #888;
+	}
+	.kiosk-sub.ok { color: #2d7d2d; }
+
+	.kiosk-live {
+		position: absolute;
+		bottom: 4px;
+		right: 5px;
+		font-size: 0.34rem;
+		color: #2d7d2d;
 		letter-spacing: 0.08em;
-		text-shadow: 0 0 8px rgba(144,238,144,0.6);
-	}
-
-	.display-sub {
-		font-size: 0.42rem;
-		color: #4a8a4a;
-		letter-spacing: 0.1em;
-		font-family: 'Noto Sans KR', sans-serif;
-		font-weight: 700;
-		text-align: center;
-	}
-
-	.display-dot {
-		width: 5px;
-		height: 5px;
-		border-radius: 50%;
-		background: #90ee90;
-		box-shadow: 0 0 6px rgba(144,238,144,0.8);
 		animation: blink 2s ease-in-out infinite;
 	}
 
-	.display-sent {
-		background: linear-gradient(135deg, #1a2e1a, #0f1f0f);
-	}
-	.display-label-sent {
-		font-size: 0.8rem;
-		letter-spacing: 0.12em;
-		animation: fadeIn 0.6s ease-out;
-	}
-	.display-dot-sent {
-		box-shadow: 0 0 10px rgba(144,238,144,1);
-		animation: blink 0.8s ease-in-out infinite;
-	}
+	.display-sent { background: #fff; }
 
 	.letter-box {
 		background: linear-gradient(175deg, #dadadf 0%, #cacacf 60%, #c0c0c8 100%);
