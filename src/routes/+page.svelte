@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { page } from "$app/stores";
+	import Terminal from "$lib/components/Terminal.svelte";
 
 	const API = import.meta.env.VITE_API_URL ?? "";
+
+	// ── 터미널 팝업 ───────────────────────────────────────────────────────────
+	let showTerminal = $state(false);
 
 	// ── URL 상태 ──────────────────────────────────────────────────────────────
 	const urlStatus = $derived($page.url.searchParams.get("status"));
@@ -109,7 +113,10 @@
 	<title>매일함</title>
 </svelte:head>
 
-<svelte:window onkeydown={(e) => { if (e.key === "Enter" && phase === "idle") subscribe(); }} />
+<svelte:window onkeydown={(e) => {
+	if (e.key === "Enter" && phase === "idle" && !showTerminal) subscribe();
+	if (e.key === "`") { e.preventDefault(); showTerminal = !showTerminal; }
+}} />
 
 <div class="page">
 
@@ -191,10 +198,14 @@
 	<!-- 푸터 -->
 	<footer class="footer">
 		<span>매일함으로, 매일 함.</span>
+		<button class="terminal-hint" onclick={() => showTerminal = true}>`</button>
 	</footer>
 
 </div>
 
+{#if showTerminal}
+	<Terminal onClose={() => showTerminal = false} />
+{/if}
 
 <style>
 	:global(body) {
@@ -356,6 +367,26 @@
 		font-size: 12px;
 		color: #ccc;
 		letter-spacing: 0.06em;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.terminal-hint {
+		font-family: 'DM Mono', 'Fira Code', monospace;
+		font-size: 13px;
+		color: #ddd;
+		background: #f5f5f5;
+		border: 1px solid #e0e0e0;
+		border-radius: 4px;
+		padding: 1px 7px;
+		cursor: pointer;
+		transition: background 0.15s, color 0.15s;
+		line-height: 1.6;
+	}
+	.terminal-hint:hover {
+		background: #1a1108;
+		color: #90ee90;
+		border-color: #1a1108;
 	}
 
 	/* ── 해지 인라인 ── */
