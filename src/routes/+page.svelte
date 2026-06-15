@@ -2,22 +2,11 @@
 	import { page } from "$app/stores";
 	import HomeTerminal from "$lib/components/HomeTerminal.svelte";
 
-	const API = import.meta.env.VITE_API_URL ?? "";
-
 	// ── URL 상태 ──────────────────────────────────────────────────────────────
 	const urlAction = $derived($page.url.searchParams.get("action"));
 	const urlToken  = $derived($page.url.searchParams.get("token"));
 	const showUnsubscribeModal = $derived(urlAction === "unsubscribe" && !!urlToken);
 
-	// ── 구독 해지 ─────────────────────────────────────────────────────────────
-	let unsubscribeLoading = $state(false);
-
-	async function confirmUnsubscribe() {
-		if (!urlToken) return;
-		unsubscribeLoading = true;
-		const res = await fetch(`${API}/api/unsubscribe?token=${urlToken}`, { method: "POST" }).catch(() => null);
-		window.location.href = res?.ok ? "/?status=unsubscribed" : "/?status=invalid";
-	}
 </script>
 
 <svelte:head>
@@ -32,31 +21,23 @@
 
 	<main class="content">
 
-		{#if showUnsubscribeModal}
-			<div class="intro">
+		<div class="intro">
+			{#if showUnsubscribeModal}
 				<p class="unsub-label">구독 해지</p>
-				<h1 class="intro-title">정말 해지하시겠어요?</h1>
-				<p class="intro-desc">해지 후에도 언제든 다시 구독할 수 있습니다.</p>
-			</div>
-			<div class="unsub-actions">
-				<button class="unsub-btn" onclick={confirmUnsubscribe} disabled={unsubscribeLoading}>
-					{unsubscribeLoading ? "처리 중..." : "네, 해지할게요"}
-				</button>
-				<a href="/" class="cancel-link">취소</a>
-			</div>
-		{:else}
-			<div class="intro">
+				<h1 class="intro-title">구독을 취소할게요.</h1>
+				<p class="intro-desc">터미널에서 확인해주세요.</p>
+			{:else}
 				<h1 class="intro-title">매일 아침,<br>질문 하나가 도착합니다.</h1>
 				<p class="intro-desc">
 					아는 것 같았는데 막히는 것들 — 백엔드, 프론트엔드, CS 기초를
 					매일 한 통씩 받아보세요. GitHub Discussion에서 함께 답을 만들어가요.
 				</p>
-			</div>
+			{/if}
+		</div>
 
-			<div class="terminal-wrap">
-				<HomeTerminal />
-			</div>
-		{/if}
+		<div class="terminal-wrap">
+			<HomeTerminal action={urlAction ?? ''} token={urlToken ?? ''} />
+		</div>
 
 	</main>
 
@@ -139,32 +120,6 @@
 		text-transform: uppercase;
 		margin: 0;
 	}
-	.unsub-actions {
-		display: flex;
-		gap: 12px;
-		align-items: center;
-	}
-	.unsub-btn {
-		padding: 12px 24px;
-		background: #333d4b;
-		color: #fff;
-		font-size: 15px;
-		font-weight: 600;
-		border: none;
-		border-radius: 8px;
-		cursor: pointer;
-		font-family: inherit;
-		transition: opacity 0.15s;
-	}
-	.unsub-btn:hover:not(:disabled) { opacity: 0.75; }
-	.unsub-btn:disabled { opacity: 0.5; cursor: default; }
-	.cancel-link {
-		font-size: 15px;
-		color: #8b95a1;
-		text-decoration: none;
-		transition: color 0.15s;
-	}
-	.cancel-link:hover { color: #333d4b; }
 
 	.footer {
 		padding: 48px 0 36px;
