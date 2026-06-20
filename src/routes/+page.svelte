@@ -82,7 +82,7 @@
 	}
 
 	.header {
-		padding: 48px 24px 64px;
+		padding: 48px 0 64px;
 	}
 	.logo {
 		font-size: 16px;
@@ -102,7 +102,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
-		padding: 0 24px;
+		
 	}
 	.intro-title {
 		font-size: 28px;
